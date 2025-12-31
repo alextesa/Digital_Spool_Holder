@@ -12,17 +12,3 @@
 # OS junk
 .DS_Store
 Thumbs.db
-# PlatformIO
-.pio/
-.vscode/c_cpp_properties.json
-.vscode/launch.json
-.vscode/ipch/
-
-# Build artifacts
-*.elf
-*.bin
-*.map
-
-# OS junk
-.DS_Store
-Thumbs.db

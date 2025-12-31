@@ -5,8 +5,8 @@
 #define HX_DOUT 32
 #define HX_SCK  33
 
-#define DEAD_ZONE 5
-#define MUESTRAS 25
+#define DEAD_ZONE 3 // Cuanto tiene que variar el valor para que sea real
+#define MUESTRAS 25  // Sobre cuanto va a promediar
 
 HX711 scale;
 
