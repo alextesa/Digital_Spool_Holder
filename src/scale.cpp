@@ -1,12 +1,11 @@
 #include <Arduino.h>
 #include "HX711.h"
-#include "scale_ctrl.h"
+#include "scale.h"
 
 #define HX_DOUT 32
 #define HX_SCK  33
 
 #define DEAD_ZONE 3 // Cuanto tiene que variar el valor para que sea real
-#define MUESTRAS 25  // Sobre cuanto va a promediar
 
 HX711 scale;
 
@@ -37,15 +36,18 @@ void scaleInit() {
 }
 
 int leerPesoEstable() {
-  if (!scale.is_ready()) return pesoMostrado;
+    if (!scale.is_ready()) return pesoMostrado;
 
-  float gramos = scale.get_units(MUESTRAS);
-  int pesoActual = redondear(gramos);
+    // Leer solo 1 muestra por iteración
+    float gramos = scale.get_units(1);
 
-  if (abs(pesoActual - pesoMostrado) >= DEAD_ZONE) {
-    pesoMostrado = pesoActual;
-  }
+    // Promedio móvil simple
+    pesoMostrado = (pesoMostrado + redondear(gramos)) / 2;
 
-  return pesoMostrado;
+    // Aplicar DEAD_ZONE
+    if (abs(pesoMostrado - redondear(gramos)) < DEAD_ZONE) return pesoMostrado;
+
+    return pesoMostrado;
 }
+
 

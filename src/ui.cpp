@@ -1,5 +1,5 @@
 #include "ui.h"
-#include "scale_ctrl.h"  // tu módulo de balanza
+#include "scale.h"  // tu módulo de balanza
 
 // ================= VARIABLES =================
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
