@@ -1,4 +1,5 @@
 #include "input.h"
+#include "ui.h"
 #include <Arduino.h>
 
 // Variables internas de debounce y flanco
@@ -57,9 +58,26 @@ Button readButton() {
 void checkButtons() {
     Button b = readButton();
     switch (b) {
-        case BTN_SELECT: Serial.println("Botón SELECT presionado"); break;
-        case BTN_UP:     Serial.println("Botón UP presionado"); break;
-        case BTN_DOWN:   Serial.println("Botón DOWN presionado"); break;
-        case BTN_NONE:   break;
+        case BTN_SELECT:
+            Serial.println("Botón SELECT presionado");
+            if(currentScreen == PRINCIPAL) {
+                currentScreen = MENU;  // cambiar a pantalla de menú
+            } else if(currentScreen == MENU) {
+                // aquí podrías ejecutar la opción seleccionada
+                MenuOption opcion = menuSelect();
+                // hacer algo según la opción
+            }
+            break;
+        case BTN_UP:
+            Serial.println("Botón UP presionado");
+            if(currentScreen == MENU) menuUp();
+            break;
+        case BTN_DOWN:
+            Serial.println("Botón DOWN presionado");
+            if(currentScreen == MENU) menuDown();
+            break;
+        case BTN_NONE:
+            break;
     }
 }
+
