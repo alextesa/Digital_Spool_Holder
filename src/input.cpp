@@ -1,6 +1,6 @@
-#include "input.h"
-#include "ui.h"
 #include <Arduino.h>
+#include "input.h"
+#include "ui.h"  // Asume que aquí tienes currentScreen, currentMenu y funciones menuUp, menuDown, handleMenuSelect
 
 // Variables internas de debounce y flanco
 static bool lastSelect = HIGH;
@@ -11,7 +11,7 @@ static unsigned long lastSelectTime = 0;
 static unsigned long lastUpTime     = 0;
 static unsigned long lastDownTime   = 0;
 
-const unsigned long DEBOUNCE_MS = 30; // ms
+const unsigned long DEBOUNCE_MS = 300; // ms evita doble pulsacion
 
 // Inicializa los pines de los botones
 void inputInit() {
@@ -21,7 +21,7 @@ void inputInit() {
 }
 
 // Devuelve el botón presionado una vez o BTN_NONE
-Button readButton() {
+InputButton readButton() {
     unsigned long now = millis();
     bool s = digitalRead(PIN_SELECT);
     bool u = digitalRead(PIN_UP);
@@ -55,29 +55,15 @@ Button readButton() {
 }
 
 // Solo para debug: imprime los botones presionados
-void checkButtons() {
-    Button b = readButton();
-    switch (b) {
-        case BTN_SELECT:
-            Serial.println("Botón SELECT presionado");
-            if(currentScreen == PRINCIPAL) {
-                currentScreen = MENU;  // cambiar a pantalla de menú
-            } else if(currentScreen == MENU) {
-                // aquí podrías ejecutar la opción seleccionada
-                MenuOption opcion = menuSelect();
-                // hacer algo según la opción
-            }
-            break;
-        case BTN_UP:
-            Serial.println("Botón UP presionado");
-            if(currentScreen == MENU) menuUp();
-            break;
-        case BTN_DOWN:
-            Serial.println("Botón DOWN presionado");
-            if(currentScreen == MENU) menuDown();
-            break;
-        case BTN_NONE:
-            break;
+InputButton checkButtons() {
+    InputButton b = readButton();
+    if (b != BTN_NONE) {
+        switch (b) {
+            case BTN_SELECT: Serial.println("SELECT"); break;
+            case BTN_UP:     Serial.println("UP");     break;
+            case BTN_DOWN:   Serial.println("DOWN");   break;
+            default: break;
+        }
     }
+    return b;
 }
-

@@ -1,34 +1,63 @@
 #pragma once
+
 #include <Arduino.h>
-#include <Wire.h>
-#include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include "input.h"
 #include "scale.h"
 
-// ================= PANTALLAS =================
+// ================= PANTALLA =================
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
-enum Screen { SPLASH, PRINCIPAL, MENU };
 
-// ================= MENÚ =================
-enum MenuOption { MENU_PESO, MENU_CALIBRAR, MENU_OPCIONES, MENU_TARA };
-#define MENU_COUNT 4
+// ================= MENÚ PRINCIPAL =================
+enum MenuOption {
+    MENU_PESO,
+    MENU_CALIBRAR,
+    MENU_PERFILES,
+    MENU_TARA,
+    MENU_COUNT
+};
 
-extern Screen currentScreen;
 extern MenuOption currentMenu;
 extern const char* menuText[MENU_COUNT];
-extern unsigned long lastInteraction;
 
-// ================= FUNCIONES =================
+// ================= ESTADOS DE UI =================
+enum Screen {
+    SPLASH,
+    PRINCIPAL,
+    MENU,
+    SUBMENU_PERFILES,
+    PERFIL_CREAR
+};
+
+extern Screen currentScreen;
+
+// ================= CICLO UI =================
 void uiInit();
 void uiLoop();
 
-// Renderizado
+// ================= RENDER GENÉRICO =================
 void renderSplash();
 void renderPrincipal();
-void renderMenu();
+void renderMenuGenerico(
+    const char* titulo,
+    const char** opciones,
+    int count,
+    int selected
+);
 
-// Navegación de menú
-void menuUp();
-void menuDown();
-MenuOption menuSelect();
+// ================= NAVEGACIÓN GENÉRICA =================
+void menuNavigate(int &index, int count, InputButton btn);
+
+// ================= ACCIONES DEL MENÚ =================
+void handleMenuSelect(MenuOption m);
+void mostrarPeso();
+void ejecutarTara();
+void calibrar();
+void abrirSubMenuPerfiles();
+
+// ================= PERFILES / CREACIÓN =================
+void perfilSelect();
+void crearPerfilInteractivo(InputButton b);
+
+void iniciarCreacionPerfil(); // prototipo

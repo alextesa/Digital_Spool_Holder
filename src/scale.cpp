@@ -50,4 +50,8 @@ int leerPesoEstable() {
     return pesoMostrado;
 }
 
+void aplicarTara() {
+    scale.tare();
+    Serial.println("[TARA] Tara aplicada");
+}
 

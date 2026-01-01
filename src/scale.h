@@ -2,3 +2,5 @@
 
 void scaleInit();
 int leerPesoEstable();
+void aplicarTara();
+

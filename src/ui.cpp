@@ -1,13 +1,35 @@
 #include "ui.h"
+#include "scale.h"
+#include "perfiles.h"
+#include "input.h"
 
 // ================= VARIABLES =================
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 Screen currentScreen = SPLASH;
 unsigned long lastInteraction = 0;
+static int currentPerfilOption = 0;
 
 // Menú
 MenuOption currentMenu = MENU_PESO;
-const char* menuText[MENU_COUNT] = { "Peso", "Calibrar", "Opciones", "Tara" };
+const char* menuText[MENU_COUNT] = { "Peso", "Calibrar", "Perfiles", "Tara" };
+
+// Opciones del submenú perfiles
+const char* perfilesMenu[] = {"Cargar", "Crear", "Editar", "Eliminar"};
+const int PERFILES_MENU_COUNT = 4;
+
+//Crear perfil
+enum PerfilCrearState {
+    PERFIL_NOMBRE,
+    PERFIL_PESO,
+    PERFIL_GUARDAR
+};
+
+static PerfilCrearState perfilState = PERFIL_NOMBRE;
+static String nombrePerfil = "";
+static int pesoPerfil = 100;
+static int letraPos = 0;
+
+static const char letras[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ";
 
 // ================= INICIALIZACION =================
 void uiInit() {
@@ -23,22 +45,48 @@ void uiInit() {
 
 // ================= LOOP PRINCIPAL =================
 void uiLoop() {
+    InputButton btn = readButton();
+
     switch(currentScreen) {
+
         case SPLASH:
             renderSplash();
-            if (millis() - lastInteraction > 2000) {
+            if (millis() - lastInteraction > 1000) {
                 currentScreen = PRINCIPAL;
                 lastInteraction = millis();
             }
             break;
+
         case PRINCIPAL:
             renderPrincipal();
+            if (btn == BTN_SELECT) {
+                currentScreen = MENU;
+            }
             break;
+
         case MENU:
-            renderMenu();
+            // Navegación genérica
+            menuNavigate((int&)currentMenu, MENU_COUNT, btn);
+
+            // Selección
+            if (btn == BTN_SELECT) handleMenuSelect(currentMenu);
+
+            // Renderizado genérico
+            renderMenuGenerico("MENU", menuText, MENU_COUNT, currentMenu);
             break;
-    }
-}
+
+        case SUBMENU_PERFILES:
+            // Navegación genérica
+            menuNavigate(currentPerfilOption, PERFILES_MENU_COUNT, btn);
+
+            // Acción al seleccionar
+            if (btn == BTN_SELECT) perfilSelect();
+
+            // Renderizado genérico
+            renderMenuGenerico("PERFILES", perfilesMenu, PERFILES_MENU_COUNT, currentPerfilOption);
+            break;
+        }
+} 
 
 // ================= PANTALLA SPLASH =================
 void renderSplash() {
@@ -83,45 +131,154 @@ void renderPrincipal() {
     display.display();
 }
 
-// ================= MENÚ =================
-void renderMenu() {
+// ================= RENDER GENÉRICO =================
+
+void renderMenuGenerico(
+    const char* titulo,
+    const char** opciones,
+    int count,
+    int selected
+) {
     display.clearDisplay();
 
-    // Marco exterior
-    display.drawRoundRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 5, SSD1306_WHITE);
-
-    // Título
     display.setTextSize(1);
-    display.setCursor(10, 3);
-    display.print("MENU PRINCIPAL");
+    display.setTextColor(SSD1306_WHITE);
+    display.setCursor(0, 0);
+    display.println(titulo);
 
-    // Opciones
-    for(int i = 0; i < MENU_COUNT; i++) {
+    for (int i = 0; i < count; i++) {
         int y = 15 + i * 12;
-        if(i == currentMenu) {
-            display.fillRoundRect(5, y-1, SCREEN_WIDTH-10, 10, 3, SSD1306_WHITE);
+
+        if (i == selected) {
+            display.fillRoundRect(0, y - 1, SCREEN_WIDTH, 10, 2, SSD1306_WHITE);
             display.setTextColor(SSD1306_BLACK);
         } else {
             display.setTextColor(SSD1306_WHITE);
         }
-        display.setCursor(12, y);
-        display.setTextSize(1);
-        display.print(menuText[i]);
+
+        display.setCursor(5, y);
+        display.print(opciones[i]);
     }
 
     display.display();
 }
 
 // ================= NAVEGACIÓN =================
-void menuUp() {
-    if(currentMenu == 0) currentMenu = (MenuOption)(MENU_COUNT - 1);
-    else currentMenu = (MenuOption)(currentMenu - 1);
+
+void menuNavigate(int &index, int count, InputButton btn) {
+    if (btn == BTN_UP) {
+        index = (index - 1 + count) % count;
+    }
+    else if (btn == BTN_DOWN) {
+        index = (index + 1) % count;
+    }
 }
 
-void menuDown() {
-    currentMenu = (MenuOption)((currentMenu + 1) % MENU_COUNT);
+// ================= ACCIONES DEL MENÚ =================
+void handleMenuSelect(MenuOption m) {
+    switch(m) {
+        case MENU_PESO: mostrarPeso(); break;
+        case MENU_TARA: ejecutarTara(); break;
+        case MENU_PERFILES: abrirSubMenuPerfiles(); break;
+        case MENU_CALIBRAR: calibrar(); break;
+    }
 }
 
-MenuOption menuSelect() {
-    return currentMenu;
+// ================= ACCIONESSUBMENÚ PERFILES =================
+
+void perfilSelect() {
+    switch (currentPerfilOption) {
+        case 0: // Cargar
+            break;
+        case 1: // Crear
+            iniciarCreacionPerfil();
+            break;
+        case 2: // Editar
+            break;
+        case 3: // Eliminar
+            break;
+    }
+}
+
+// ================= FUNCIONES =================
+void mostrarPeso() {
+    currentScreen = PRINCIPAL;
+}
+
+void ejecutarTara() {
+    aplicarTara();   // ✅ llamando a la función de scale
+    Serial.println("[TARA] Tara aplicada");
+    currentScreen = PRINCIPAL;
+}
+
+void calibrar() {
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setCursor(0,20);
+    display.println("Flujo calibracion");
+    display.display();
+}
+
+void crearPerfilInteractivo(InputButton b) {
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setTextColor(SSD1306_WHITE);
+
+    if (perfilState == PERFIL_NOMBRE) {
+        display.setCursor(0,0);
+        display.println("Nombre perfil:");
+
+        display.setCursor(0,20);
+        display.print(nombrePerfil);
+        display.print(letras[letraPos]);
+        display.print("_");
+
+        if (b == BTN_UP) {
+            letraPos = (letraPos + 1) % (sizeof(letras) - 1);
+        }
+        else if (b == BTN_DOWN) {
+            letraPos = (letraPos - 1 + sizeof(letras) - 1) % (sizeof(letras) - 1);
+        }
+        else if (b == BTN_SELECT) {
+            if (letras[letraPos] == ' ') {
+                perfilState = PERFIL_PESO;
+            } else {
+                nombrePerfil += letras[letraPos];
+            }
+        }
+    }
+
+    else if (perfilState == PERFIL_PESO) {
+        display.setCursor(0,0);
+        display.println("Peso perfil:");
+
+        display.setCursor(0,20);
+        display.print(pesoPerfil);
+        display.println(" g");
+
+        if (b == BTN_UP) pesoPerfil++;
+        else if (b == BTN_DOWN && pesoPerfil > 0) pesoPerfil--;
+        else if (b == BTN_SELECT) {
+            perfilState = PERFIL_GUARDAR;
+        }
+    }
+
+    else if (perfilState == PERFIL_GUARDAR) {
+        crearPerfil(nombrePerfil, pesoPerfil);
+        currentScreen = SUBMENU_PERFILES;
+        return;
+    }
+
+    display.display();
+}
+
+void abrirSubMenuPerfiles() {
+    currentPerfilOption = 0;
+    currentScreen = SUBMENU_PERFILES;
+    lastInteraction = millis();
+    readButton(); // limpia evento previo (SELECT)
+}
+
+void iniciarCreacionPerfil() {
+    // lógica para crear un nuevo perfil
 }

@@ -25,9 +25,13 @@ void loop() {
 
         int peso = leerPesoEstable();
         uiLoop();
-        Serial.print("Peso: ");
+
+        //Aqui puedo meter serial a debug general
+        /* Serial.print("Peso: ");
         Serial.print(peso);
-        Serial.println(" g");
+        Serial.println(" g"); */
+        Serial.print("SCREEN = ");
+        Serial.println(currentScreen);
     }
 
     // checkButtons siempre activo sin bloquear

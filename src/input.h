@@ -7,18 +7,18 @@
 #define PIN_DOWN   27
 
 // Definición de botones
-enum Button {
+enum InputButton {
     BTN_NONE,
-    BTN_SELECT,
     BTN_UP,
-    BTN_DOWN
+    BTN_DOWN,
+    BTN_SELECT
 };
 
 // Inicializa los pines de entrada
 void inputInit();
 
 // Lee los botones con debounce
-Button readButton();
+InputButton readButton();
 
 // Solo para debug: imprime los botones presionados
-void checkButtons();
+InputButton checkButtons();
