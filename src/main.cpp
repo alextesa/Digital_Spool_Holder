@@ -27,14 +27,11 @@ void loop() {
         uiLoop();
 
         //Aqui puedo meter serial a debug general
-        /* Serial.print("Peso: ");
+       /*  Serial.print("Peso: ");
         Serial.print(peso);
-        Serial.println(" g"); */
+        Serial.println(" g");
         Serial.print("SCREEN = ");
-        Serial.println(currentScreen);
+        Serial.println(currentScreen); */
     }
-
-    // checkButtons siempre activo sin bloquear
-    checkButtons();
 }
 

@@ -45,7 +45,9 @@ void uiInit() {
 
 // ================= LOOP PRINCIPAL =================
 void uiLoop() {
-    InputButton btn = readButton();
+    InputButton btn = readButton(); // <-- aquí btn recibe correctamente el valor
+    Serial.print("btn = "); Serial.println((int)btn);
+    Serial.print("SCREEN = "); Serial.println(currentScreen);
 
     switch(currentScreen) {
 
@@ -65,28 +67,30 @@ void uiLoop() {
             break;
 
         case MENU:
-            // Navegación genérica
-            menuNavigate((int&)currentMenu, MENU_COUNT, btn);
+            if(btn == BTN_UP || btn == BTN_DOWN)
+                menuNavigate((int&)currentMenu, MENU_COUNT, btn);
 
-            // Selección
-            if (btn == BTN_SELECT) handleMenuSelect(currentMenu);
+            if (btn == BTN_SELECT)
+                handleMenuSelect(currentMenu);
 
-            // Renderizado genérico
             renderMenuGenerico("MENU", menuText, MENU_COUNT, currentMenu);
             break;
 
         case SUBMENU_PERFILES:
-            // Navegación genérica
-            menuNavigate(currentPerfilOption, PERFILES_MENU_COUNT, btn);
+            if(btn == BTN_UP || btn == BTN_DOWN)
+                menuNavigate(currentPerfilOption, PERFILES_MENU_COUNT, btn);
 
-            // Acción al seleccionar
-            if (btn == BTN_SELECT) perfilSelect();
+            if (btn == BTN_SELECT)
+                perfilSelect();
 
-            // Renderizado genérico
             renderMenuGenerico("PERFILES", perfilesMenu, PERFILES_MENU_COUNT, currentPerfilOption);
             break;
-        }
-} 
+
+        case CREAR_PERFIL:
+        crearPerfilInteractivo(btn);
+        break;
+    }
+}
 
 // ================= PANTALLA SPLASH =================
 void renderSplash() {
@@ -191,7 +195,12 @@ void perfilSelect() {
         case 0: // Cargar
             break;
         case 1: // Crear
-            iniciarCreacionPerfil();
+            perfilState = PERFIL_NOMBRE;
+            nombrePerfil = "";
+            pesoPerfil = 0;
+            letraPos = 0;
+            currentScreen = CREAR_PERFIL; // pantalla dedicada a crear perfil
+            break;            
             break;
         case 2: // Editar
             break;
@@ -224,22 +233,25 @@ void crearPerfilInteractivo(InputButton b) {
     display.setTextSize(1);
     display.setTextColor(SSD1306_WHITE);
 
+    // -------------------- NOMBRE --------------------
     if (perfilState == PERFIL_NOMBRE) {
-        display.setCursor(0,0);
+        display.setCursor(0, 0);
         display.println("Nombre perfil:");
 
-        display.setCursor(0,20);
+        display.setCursor(0, 20);
         display.print(nombrePerfil);
         display.print(letras[letraPos]);
-        display.print("_");
+        display.print("_"); // cursor visual
 
+        // Navegación de letras
         if (b == BTN_UP) {
-            letraPos = (letraPos + 1) % (sizeof(letras) - 1);
-        }
+            letraPos = (letraPos + 1) % (sizeof(letras) - 1); // ciclo circular
+        } 
         else if (b == BTN_DOWN) {
-            letraPos = (letraPos - 1 + sizeof(letras) - 1) % (sizeof(letras) - 1);
-        }
+            letraPos = (letraPos - 1 + (sizeof(letras) - 1)) % (sizeof(letras) - 1);
+        } 
         else if (b == BTN_SELECT) {
+            // Espacio (' ') significa terminar nombre
             if (letras[letraPos] == ' ') {
                 perfilState = PERFIL_PESO;
             } else {
@@ -248,14 +260,16 @@ void crearPerfilInteractivo(InputButton b) {
         }
     }
 
+    // -------------------- PESO --------------------
     else if (perfilState == PERFIL_PESO) {
-        display.setCursor(0,0);
-        display.println("Peso perfil:");
+        display.setCursor(0, 0);
+        display.println("Peso perfil (g):");
 
-        display.setCursor(0,20);
+        display.setCursor(0, 20);
         display.print(pesoPerfil);
         display.println(" g");
 
+        // Ajuste de peso
         if (b == BTN_UP) pesoPerfil++;
         else if (b == BTN_DOWN && pesoPerfil > 0) pesoPerfil--;
         else if (b == BTN_SELECT) {
@@ -263,10 +277,16 @@ void crearPerfilInteractivo(InputButton b) {
         }
     }
 
+    // -------------------- GUARDAR --------------------
     else if (perfilState == PERFIL_GUARDAR) {
-        crearPerfil(nombrePerfil, pesoPerfil);
+        crearPerfil(nombrePerfil, pesoPerfil); // función que guarda tu perfil
+        // Reset de variables y regreso al submenú
+        perfilState = PERFIL_NOMBRE;
+        nombrePerfil = "";
+        pesoPerfil = 0;
+        letraPos = 0;
         currentScreen = SUBMENU_PERFILES;
-        return;
+        return; // importante salir antes de display.display()
     }
 
     display.display();
@@ -279,6 +299,3 @@ void abrirSubMenuPerfiles() {
     readButton(); // limpia evento previo (SELECT)
 }
 
-void iniciarCreacionPerfil() {
-    // lógica para crear un nuevo perfil
-}

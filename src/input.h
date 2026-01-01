@@ -1,24 +1,23 @@
-#pragma once
+#ifndef INPUT_H
+#define INPUT_H
+
 #include <Arduino.h>
 
-// Pines de los botones
-#define PIN_SELECT 25
-#define PIN_UP     26
-#define PIN_DOWN   27
-
-// Definición de botones
+// ===== ENUM BOTONES =====
 enum InputButton {
-    BTN_NONE,
+    BTN_NONE = 0,
     BTN_UP,
     BTN_DOWN,
     BTN_SELECT
 };
 
-// Inicializa los pines de entrada
-void inputInit();
+// ===== PINES =====
+#define PIN_SELECT 25
+#define PIN_UP     26
+#define PIN_DOWN   27
 
-// Lee los botones con debounce
+// ===== FUNCIONES =====
+void inputInit();
 InputButton readButton();
 
-// Solo para debug: imprime los botones presionados
-InputButton checkButtons();
+#endif

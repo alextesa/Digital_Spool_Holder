@@ -27,7 +27,7 @@ enum Screen {
     PRINCIPAL,
     MENU,
     SUBMENU_PERFILES,
-    PERFIL_CREAR
+    CREAR_PERFIL
 };
 
 extern Screen currentScreen;
@@ -59,5 +59,3 @@ void abrirSubMenuPerfiles();
 // ================= PERFILES / CREACIÓN =================
 void perfilSelect();
 void crearPerfilInteractivo(InputButton b);
-
-void iniciarCreacionPerfil(); // prototipo
