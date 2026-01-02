@@ -29,7 +29,7 @@ static String nombrePerfil = "";
 static int pesoPerfil = 100;
 static int letraPos = 0;
 
-static const char letras[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ";
+static const char letras[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 #<";
 
 // ================= INICIALIZACION =================
 void uiInit() {
@@ -45,12 +45,34 @@ void uiInit() {
 
 // ================= LOOP PRINCIPAL =================
 void uiLoop() {
-    InputButton btn = readButton(); // <-- aquí btn recibe correctamente el valor
-    Serial.print("btn = "); Serial.println((int)btn);
-    Serial.print("SCREEN = "); Serial.println(currentScreen);
+    static InputButton lastNavBtn = BTN_NONE;
+    static unsigned long lastNavTime = 0;
+    const unsigned long REPEAT_DELAY    = 200; // espera inicial
+    const unsigned long REPEAT_INTERVAL = 80;  // mientras mantiene presionado
 
-    switch(currentScreen) {
+    InputButton b = readButton();
+    InputButton activeBtn = BTN_NONE;
 
+    // ---------------- AUTOREPEAT UP/DOWN ----------------
+    if (b == BTN_UP || b == BTN_DOWN) {
+        if (b != lastNavBtn) {
+            lastNavBtn  = b;
+            lastNavTime = millis();
+            activeBtn   = b;  // primer pulso inmediato
+        } else if (millis() - lastNavTime > REPEAT_DELAY) {
+            lastNavTime = millis() - (REPEAT_DELAY - REPEAT_INTERVAL); // mantener intervalo constante
+            activeBtn   = b;
+        }
+    } else {
+        lastNavBtn  = BTN_NONE;
+        lastNavTime = 0;
+    }
+
+    // ---------------- SELECT INSTANTÁNEO ----------------
+    if (b == BTN_SELECT) activeBtn = BTN_SELECT;
+
+    // ---------------- SWITCH PANTALLAS ----------------
+    switch (currentScreen) {
         case SPLASH:
             renderSplash();
             if (millis() - lastInteraction > 1000) {
@@ -61,34 +83,24 @@ void uiLoop() {
 
         case PRINCIPAL:
             renderPrincipal();
-            if (btn == BTN_SELECT) {
-                currentScreen = MENU;
-            }
+            if (activeBtn == BTN_SELECT) currentScreen = MENU;
             break;
 
         case MENU:
-            if(btn == BTN_UP || btn == BTN_DOWN)
-                menuNavigate((int&)currentMenu, MENU_COUNT, btn);
-
-            if (btn == BTN_SELECT)
-                handleMenuSelect(currentMenu);
-
+            menuNavigate((int&)currentMenu, MENU_COUNT, activeBtn);
+            if (activeBtn == BTN_SELECT) handleMenuSelect(currentMenu);
             renderMenuGenerico("MENU", menuText, MENU_COUNT, currentMenu);
             break;
 
         case SUBMENU_PERFILES:
-            if(btn == BTN_UP || btn == BTN_DOWN)
-                menuNavigate(currentPerfilOption, PERFILES_MENU_COUNT, btn);
-
-            if (btn == BTN_SELECT)
-                perfilSelect();
-
+            menuNavigate(currentPerfilOption, PERFILES_MENU_COUNT, activeBtn);
+            if (activeBtn == BTN_SELECT) perfilSelect();
             renderMenuGenerico("PERFILES", perfilesMenu, PERFILES_MENU_COUNT, currentPerfilOption);
             break;
 
         case CREAR_PERFIL:
-        crearPerfilInteractivo(btn);
-        break;
+            crearPerfilInteractivo(activeBtn);
+            break;
     }
 }
 
@@ -112,13 +124,22 @@ void renderSplash() {
 // ================= PANTALLA PRINCIPAL =================
 void renderPrincipal() {
     display.clearDisplay();
-
-    int peso = leerPesoEstable();
-
     int16_t x, y;
     uint16_t w, h;
-    String s = String(peso) + " g";
 
+    int peso = leerPesoEstable();
+    String nombrePerfilActivo;
+
+// ---------- PERFIL ACTIVO (ARRIBA) ----------
+    display.setTextSize(1);
+    display.setTextColor(SSD1306_WHITE);
+    String perfilTxt = "P. Activo: " + nombrePerfilActivo;
+    display.getTextBounds(perfilTxt, 0, 0, &x, &y, &w, &h);
+    display.setCursor((SCREEN_WIDTH - w) / 2, 0);
+    display.println(perfilTxt);
+
+// ---------- PESO (CENTRADO) ----------
+    String s = String(peso) + " g";
     display.setTextSize(2);
     display.getTextBounds(s, 0, 0, &x, &y, &w, &h);
     display.setCursor((SCREEN_WIDTH - w)/2, (SCREEN_HEIGHT - h)/2);
@@ -126,7 +147,7 @@ void renderPrincipal() {
     display.println(s);
 
     // Mostrar versión
-    String ver = "DSH v0.3";
+    String ver = "DSH v0.4";
     display.setTextSize(1);
     display.getTextBounds(ver, 0, 0, &x, &y, &w, &h);
     display.setCursor(SCREEN_WIDTH - w - 1, SCREEN_HEIGHT - h - 1);
@@ -137,12 +158,7 @@ void renderPrincipal() {
 
 // ================= RENDER GENÉRICO =================
 
-void renderMenuGenerico(
-    const char* titulo,
-    const char** opciones,
-    int count,
-    int selected
-) {
+void renderMenuGenerico(    const char* titulo,const char** opciones,int count,int selected) {
     display.clearDisplay();
 
     display.setTextSize(1);
@@ -233,7 +249,7 @@ void crearPerfilInteractivo(InputButton b) {
     display.setTextSize(1);
     display.setTextColor(SSD1306_WHITE);
 
-    // -------------------- NOMBRE --------------------
+    // ---------------- NOMBRE ----------------
     if (perfilState == PERFIL_NOMBRE) {
         display.setCursor(0, 0);
         display.println("Nombre perfil:");
@@ -243,24 +259,33 @@ void crearPerfilInteractivo(InputButton b) {
         display.print(letras[letraPos]);
         display.print("_"); // cursor visual
 
+        // Mensaje recordatorio en la parte inferior
+        display.setTextSize(1);
+        display.setCursor(0, 54); // antes 56, ahora más arriba
+        display.println("# Confirmar  <- Borrar");
+
         // Navegación de letras
-        if (b == BTN_UP) {
-            letraPos = (letraPos + 1) % (sizeof(letras) - 1); // ciclo circular
-        } 
-        else if (b == BTN_DOWN) {
-            letraPos = (letraPos - 1 + (sizeof(letras) - 1)) % (sizeof(letras) - 1);
-        } 
-        else if (b == BTN_SELECT) {
-            // Espacio (' ') significa terminar nombre
-            if (letras[letraPos] == ' ') {
+        if (b == BTN_UP)   letraPos = (letraPos + 1) % (sizeof(letras) - 1);
+        if (b == BTN_DOWN) letraPos = (letraPos - 1 + (sizeof(letras) - 1)) % (sizeof(letras) - 1);
+
+        // Selección
+        if (b == BTN_SELECT) {
+            char letra = letras[letraPos];
+            if (letra == '#') {           // Confirmar nombre
+                pesoPerfil = 100;
                 perfilState = PERFIL_PESO;
-            } else {
-                nombrePerfil += letras[letraPos];
+            } 
+            else if (letra == '<') {      // Borrar última letra
+                if (!nombrePerfil.isEmpty())
+                    nombrePerfil.remove(nombrePerfil.length() - 1);
+            } 
+            else {                        // Cualquier otra letra
+                nombrePerfil += letra;
             }
         }
     }
 
-    // -------------------- PESO --------------------
+    // ---------------- PESO ----------------
     else if (perfilState == PERFIL_PESO) {
         display.setCursor(0, 0);
         display.println("Peso perfil (g):");
@@ -269,24 +294,20 @@ void crearPerfilInteractivo(InputButton b) {
         display.print(pesoPerfil);
         display.println(" g");
 
-        // Ajuste de peso
-        if (b == BTN_UP) pesoPerfil++;
-        else if (b == BTN_DOWN && pesoPerfil > 0) pesoPerfil--;
-        else if (b == BTN_SELECT) {
-            perfilState = PERFIL_GUARDAR;
-        }
+        if (b == BTN_UP)   pesoPerfil++;
+        if (b == BTN_DOWN && pesoPerfil > 0) pesoPerfil--;
+        if (b == BTN_SELECT) perfilState = PERFIL_GUARDAR;
     }
 
-    // -------------------- GUARDAR --------------------
+    // ---------------- GUARDAR ----------------
     else if (perfilState == PERFIL_GUARDAR) {
-        crearPerfil(nombrePerfil, pesoPerfil); // función que guarda tu perfil
-        // Reset de variables y regreso al submenú
-        perfilState = PERFIL_NOMBRE;
+        crearPerfil(nombrePerfil, pesoPerfil);
         nombrePerfil = "";
-        pesoPerfil = 0;
-        letraPos = 0;
+        pesoPerfil   = 0;
+        letraPos     = 0;
+        perfilState  = PERFIL_NOMBRE;
         currentScreen = SUBMENU_PERFILES;
-        return; // importante salir antes de display.display()
+        return; // salir antes de display.display()
     }
 
     display.display();
